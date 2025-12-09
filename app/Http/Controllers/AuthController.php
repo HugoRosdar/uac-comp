@@ -3,21 +3,121 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller {
     public function checkAccount(Request $r){
-        $user = User::where('email',$r->user)->orWhere('name',$r->user)->first();
-        return response()->json(['exists'=>(bool)$user]);
+        $validated = $r->validate([
+            'user' => 'required|string|min:2|max:255'
+        ]);
+        
+        $userInput = $validated['user'];
+        $throttleKey = 'login:' . strtolower($userInput) . '|' . $r->ip();
+        
+        // Verificar si está bloqueado
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = ceil($seconds / 60);
+            
+            return response()->json([
+                'exists' => false,
+                'locked' => true,
+                'message' => "Demasiados intentos fallidos. Cuenta bloqueada por {$minutes} minutos.",
+                'retry_after' => $seconds,
+                'locked_until' => now()->addSeconds($seconds)->toDateTimeString()
+            ], 429);
+        }
+        
+        // Buscar por email o nombre (case-insensitive)
+        $user = User::whereRaw('LOWER(email) = ? OR LOWER(name) = ?', [
+            strtolower($userInput),
+            strtolower($userInput)
+        ])->first();
+        
+        // Verificar que existe y está activo
+        $exists = $user && $user->active;
+        
+        return response()->json(['exists' => $exists, 'debug' => ['found' => (bool)$user, 'active' => $user?->active]]);
     }
+    
     public function login(Request $r){
-        $user = User::where('email',$r->user)->orWhere('name',$r->user)->first();
-        if(!$user) return response()->json(['message'=>'Usuario no existe'],404);
-        if(!Hash::check($r->password, $user->password)) return response()->json(['message'=>'Clave incorrecta'],401);
+        $validated = $r->validate([
+            'user' => 'required|string|min:2|max:255',
+            'password' => 'required|string|min:4'
+        ]);
+        
+        $userInput = $validated['user'];
+        $throttleKey = 'login:' . strtolower($userInput) . '|' . $r->ip();
+        
+        // Verificar si está bloqueado ANTES de validar credenciales
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = ceil($seconds / 60);
+            
+            return response()->json([
+                'message' => "Demasiados intentos fallidos. Cuenta bloqueada por {$minutes} minutos.",
+                'retry_after' => $seconds,
+                'locked_until' => now()->addSeconds($seconds)->toDateTimeString()
+            ], 429);
+        }
+        
+        // Buscar por email o nombre (case-insensitive)
+        $user = User::whereRaw('LOWER(email) = ? OR LOWER(name) = ?', [
+            strtolower($userInput),
+            strtolower($userInput)
+        ])->first();
+        
+        if(!$user) {
+            // Incrementar intentos fallidos
+            RateLimiter::hit($throttleKey, 1200); // 1200 segundos = 20 minutos
+            
+            $attempts = RateLimiter::attempts($throttleKey);
+            $remaining = 5 - $attempts;
+            
+            return response()->json([
+                'message' => 'Credenciales incorrectas',
+                'attempts_remaining' => max(0, $remaining)
+            ], 404);
+        }
+        
+        if(!$user->active) {
+            return response()->json(['message' => 'Usuario desactivado'], 403);
+        }
+        
+        if(!Hash::check($validated['password'], $user->password)) {
+            // Incrementar intentos fallidos (20 minutos de bloqueo)
+            RateLimiter::hit($throttleKey, 1200);
+            
+            $attempts = RateLimiter::attempts($throttleKey);
+            $remaining = 5 - $attempts;
+            
+            return response()->json([
+                'message' => 'Credenciales incorrectas',
+                'attempts_remaining' => max(0, $remaining)
+            ], 401);
+        }
+        
+        // Login exitoso: limpiar intentos fallidos
+        RateLimiter::clear($throttleKey);
+        
+        // Revocar tokens anteriores
+        $user->tokens()->delete();
+        
         $token = $user->createToken('api-token')->plainTextToken;
-        return response()->json(['token'=>$token,'role'=>$user->role,'user'=>['id'=>$user->id,'name'=>$user->name]]);
+        
+        return response()->json([
+            'token' => $token,
+            'role' => $user->role,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email
+            ]
+        ]);
     }
+    
     public function logout(Request $r){
         $r->user()->currentAccessToken()->delete();
-        return response()->json(['logout'=>true]);
+        return response()->json(['logout' => true]);
     }
 }

@@ -8,11 +8,18 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
+| rutas son cargadas por RouteServiceProvider y asignadas al grupo web.
 |
 */
 
+// Ruta para el frontend SPA
 Route::get('/', function () {
-    return view('welcome');
+    return file_get_contents(public_path('frontend/index.html'));
 });
+
+// Ruta catch-all para el frontend (para que funcione client-side routing)
+Route::get('/{path}', function () {
+    return file_get_contents(public_path('frontend/index.html'));
+})->where('path', '^(?!api).*$');
+
+

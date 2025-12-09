@@ -6,8 +6,9 @@ use Illuminate\Support\Facades\Hash;
 class DatabaseSeeder extends Seeder {
     public function run(){
         DB::table('users')->insert([
-            ['name'=>'Coordinador Prueba','email'=>'coord@example.com','password'=>Hash::make('password'),'role'=>'coordinator','active'=>1,'created_at'=>now(),'updated_at'=>now()],
-            ['name'=>'Encargado Uno','email'=>'enc1@example.com','password'=>Hash::make('password'),'role'=>'encargado','active'=>1,'created_at'=>now(),'updated_at'=>now()]
+            ['name'=>'Coordinador Prueba','email'=>'coord@example.com','password'=>Hash::make('password'),'role'=>'coordinador','active'=>1,'created_at'=>now(),'updated_at'=>now()],
+            ['name'=>'Encargado Uno','email'=>'enc1@example.com','password'=>Hash::make('password'),'role'=>'encargado','active'=>1,'created_at'=>now(),'updated_at'=>now()],
+            ['name'=>'Hugo Coh','email'=>'hugo@uac.edu','password'=>Hash::make('password'),'role'=>'coordinador','active'=>1,'created_at'=>now(),'updated_at'=>now()]
         ]);
         DB::table('categories')->insert([['name'=>'Limpieza'],['name'=>'computo'],['name'=>'cableado'],['name'=>'cofee brake']]);
         DB::table('products')->insert([

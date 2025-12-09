@@ -2,11 +2,52 @@
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 class DashboardController extends Controller {
     public function summary(Request $r){
-        $pending = DB::select('SELECT r.id,r.folio,r.solicitante,r.return_date,p.name as product FROM requests r JOIN request_items ri ON ri.request_id=r.id JOIN products p ON p.id=ri.product_id WHERE r.type="prestamo" AND r.status="pendiente" GROUP BY r.id LIMIT 5');
-        $low = DB::select('SELECT id,name,quantity FROM products WHERE quantity<=min_quantity AND quantity>0 LIMIT 10');
-        $out = DB::select('SELECT id,name FROM products WHERE quantity=0 LIMIT 10');
-        return response()->json(['pending'=>$pending,'low'=>$low,'out'=>$out,'role'=>$r->user()->role ?? 'encargado']);
+        try {
+            Log::info('Dashboard summary called', ['user_id' => $r->user()->id ?? 'no user']);
+            
+            // Obtener solicitudes pendientes con productos concatenados
+            $pending = DB::select("SELECT r.id, r.folio, r.solicitante, r.return_date, 
+                GROUP_CONCAT(p.name SEPARATOR ', ') as product 
+                FROM requests r 
+                JOIN request_items ri ON ri.request_id = r.id 
+                JOIN products p ON p.id = ri.product_id 
+                WHERE r.type = 'prestamo' AND r.status = 'pendiente' 
+                GROUP BY r.id, r.folio, r.solicitante, r.return_date 
+                ORDER BY r.return_date ASC 
+                LIMIT 5");
+            
+            Log::info('Pending requests', ['count' => count($pending)]);
+            
+            $low = DB::select('SELECT id,name,quantity FROM products WHERE quantity<=min_quantity AND quantity>0 LIMIT 10');
+            
+            Log::info('Low stock products', ['count' => count($low)]);
+            
+            $out = DB::select('SELECT id,name FROM products WHERE quantity=0 LIMIT 10');
+            
+            Log::info('Out of stock products', ['count' => count($out)]);
+            
+            $user = $r->user();
+            
+            $response = [
+                'pending' => $pending,
+                'low' => $low,
+                'out' => $out,
+                'role' => $user->role ?? 'encargado',
+                'user' => [
+                    'name' => $user?->name ?? ''
+                ]
+            ];
+            
+            Log::info('Dashboard response', ['data' => $response]);
+            
+            return response()->json($response);
+        } catch (\Exception $e) {
+            Log::error('Dashboard error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Error al cargar dashboard: ' . $e->getMessage()], 500);
+        }
     }
 }

@@ -1,1 +1,539 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reportes</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"><link href="css/exact-style.css" rel="stylesheet"><script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script></head><body x-data="reportsPage()" x-init="load()"><div class="header"><img src="assets/logo1.png" class="logo"><img src="assets/logo2.png" class="logo"><div style="margin-left:auto"><button class="btn btn-outline-dark" @click="logout()">Salir</button></div></div><div class="container-fluid"><div class="row"><div class="col-2"><div class="sidebar"><a href="dashboard.html">Inicio</a><a href="users.html">Usuarios</a><a href="products.html">Productos</a><a href="requests.html">Solicitudes</a></div></div><div class="col-9"><div class="card-panel"><h3>Reportes</h3><div class="mb-3"><button class="btn btn-primary me-2" @click="tab='movements'">Movimientos</button><button class="btn btn-secondary" @click="tab='requests'">Solicitudes</button></div><div x-show="tab=='movements'"><div class="d-flex justify-content-between"><h5>Movimientos</h5><div><button class="btn btn-outline-primary" @click="exportMovements()">Exportar PDF</button></div></div><table class="table table-soft"><thead><tr><th>ID</th><th>Usuario</th><th>Acción</th><th>Detalles</th><th>Fecha</th></tr></thead><tbody><template x-for="m in movements" :key="m.id"><tr><td x-text="m.id"></td><td x-text="m.user"></td><td x-text="m.action"></td><td x-text="m.details"></td><td x-text="m.created_at"></td></tr></template></tbody></table><div class="d-flex justify-content-between"><button class="btn" @click="prev()">Anterior</button><div>Página <span x-text="page"></span></div><button class="btn" @click="next()">Siguiente</button></div></div><div x-show="tab=='requests'"><div class="d-flex justify-content-between"><h5>Solicitudes</h5><div><button class="btn btn-outline-primary" @click="exportRequests()">Exportar PDF</button></div></div><table class="table table-soft"><thead><tr><th>ID</th><th>Folio</th><th>Tipo</th><th>Solicitante</th><th>Fecha</th></tr></thead><tbody><template x-for="r in reqs" :key="r.id"><tr><td x-text="r.id"></td><td x-text="r.folio"></td><td x-text="r.type"></td><td x-text="r.solicitante"></td><td x-text="r.requested_at"></td></tr></template></tbody></table></div></div></div></div></div><script src="js/app.js"></script><script>function reportsPage(){return {tab:'movements',page:1,movements:[],reqs:[],async load(){const r=await apiFetch('/movements?page='+this.page,'GET');if(r.ok)this.movements=r.data.data;const s=await apiFetch('/requests/history','GET');if(s.ok)this.reqs=s.data;},logout(){localStorage.removeItem('token');window.location='index.html';},prev(){if(this.page>1){this.page--;this.load();}},next(){this.page++;this.load();},async exportMovements(){const res=await fetch('/api/reports/movements?page='+this.page,{headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});if(res.ok){const blob=await res.blob();downloadBlob('movimientos_page_'+this.page+'.pdf',blob);}else alert('Error exportando');},async exportRequests(){const res=await fetch('/api/reports/requests',{headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});if(res.ok){const blob=await res.blob();downloadBlob('solicitudes.pdf',blob);}else alert('Error exportando');}}}</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reportes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/exact-style.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body x-data="reportsPage()" x-init="load()">
+  <div class="header d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center">
+      <img src="assets/logo1.png" class="logo">
+      <img src="assets/logo2.png" class="logo">
+    </div>
+    <div class="d-flex align-items-center">
+      <div class="me-3">Hola <strong x-text="userName"></strong></div>
+      <div style="margin-left:auto"><button class="btn btn-outline-dark" @click="logout()">Salir</button></div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-2">
+        <div class="sidebar">
+          <a href="dashboard.html">Inicio</a>
+          <a href="users.html" x-show="role==='coordinador'">Usuarios</a>
+          <a href="products.html">Productos</a>
+          <a href="requests.html">Solicitudes</a>
+          <a href="reports.html">Reportes</a>
+        </div>
+      </div>
+
+      <div class="col-9">
+        <div class="card-panel">
+          <h3>Reportes</h3>
+          <div class="mb-3"><button class="btn btn-primary me-2" @click="tab='movements'">Movimientos</button><button class="btn btn-secondary" @click="tab='requests'">Solicitudes</button></div>
+
+          <div x-show="tab=='movements'">
+            <div class="d-flex justify-content-between"><h5>Movimientos</h5><div><button class="btn btn-outline-primary" @click="exportMovements()">Exportar PDF</button></div></div>
+            <table class="table table-soft"><thead><tr><th>#</th><th>Usuario</th><th>Acción</th><th>Detalles</th><th>Fecha</th></tr></thead>
+              <tbody><template x-for="(m, index) in movements" :key="m.id"><tr><td x-text="index + 1"></td><td x-text="m.user"></td><td x-text="translateAction(m.action)"></td><td x-text="m.details"></td><td x-text="m.created_at"></td></tr></template></tbody></table>
+            <div class="d-flex justify-content-between"><button class="btn" @click="prev()">Anterior</button><div>Página <span x-text="page"></span></div><button class="btn" @click="next()">Siguiente</button></div>
+          </div>
+
+          <div x-show="tab=='requests'">
+            <div class="d-flex justify-content-between"><h5>Solicitudes</h5><div><button class="btn btn-outline-primary" @click="exportRequests()">Exportar PDF</button></div></div>
+            
+            <!-- Filtros de búsqueda -->
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label class="form-label">Buscar por Usuario:</label>
+                <input type="text" class="form-control" x-model="filterUser" placeholder="Buscar usuario...">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Buscar por Solicitante:</label>
+                <input type="text" class="form-control" x-model="filterSolicitante" placeholder="Buscar solicitante...">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Buscar por Fecha:</label>
+                <input type="date" class="form-control" x-model="filterDate">
+              </div>
+            </div>
+            
+            <table class="table table-soft"><thead><tr><th>#</th><th>Usuario</th><th>Folio</th><th>Tipo</th><th>Solicitante</th><th>Fecha</th><th>Acción</th></tr></thead>
+              <tbody><template x-for="(r, index) in paginatedRequests" :key="r.id"><tr><td x-text="((requestsPage - 1) * 30) + index + 1"></td><td x-text="r.user"></td><td x-text="r.folio"></td><td x-text="r.type"></td><td x-text="r.solicitante"></td><td x-text="r.created_at"></td><td><a href="#" class="text-primary" @click.prevent="viewRequest(r)">Ver más...</a></td></tr></template></tbody></table>
+            <div class="d-flex justify-content-between"><button class="btn" @click="prevRequests()">Anterior</button><div>Página <span x-text="requestsPage"></span></div><button class="btn" @click="nextRequests()">Siguiente</button></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Detalles de Solicitud -->
+  <template x-if="showRequestModal">
+    <div class="modal" tabindex="-1" style="display: block; background: rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Detalles de la Solicitud</h5>
+            <button type="button" class="btn-close" @click="closeModal()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <strong>Fecha de Solicitud:</strong>
+                <p x-text="selectedRequest?.created_at || 'No especificada'"></p>
+              </div>
+              <div class="col-md-6">
+                <strong>Folio:</strong>
+                <p x-text="selectedRequest?.folio"></p>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <strong>Tipo:</strong>
+                <p x-text="translateType(selectedRequest?.type)"></p>
+              </div>
+              <div class="col-md-6">
+                <strong>Usuario:</strong>
+                <p x-text="selectedRequest?.user"></p>
+              </div>
+            </div>
+            <div class="mb-3">
+              <strong>Estado:</strong>
+              <select class="form-select" x-model="editForm.status" :disabled="!isEditing || role !== 'coordinador'">
+                <option value="pendiente" x-show="selectedRequest?.type === 'prestamo'">Pendiente</option>
+                <option value="aprobada" x-show="selectedRequest?.type === 'salida'">Aprobada</option>
+                <option value="cancelada">Cancelada</option>
+                <option value="devuelta" x-show="selectedRequest?.type === 'prestamo'">Devuelta</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <strong>Solicitante:</strong>
+              <input type="text" class="form-control" x-model="editForm.solicitante" :disabled="!isEditing || role !== 'coordinador'">
+            </div>
+            <div class="mb-3" x-show="selectedRequest?.return_date">
+              <strong>Fecha de Devolución:</strong>
+              <input type="date" class="form-control" x-model="editForm.return_date" :disabled="!isEditing || role !== 'coordinador'">
+            </div>
+            <div class="mb-3" x-show="selectedRequest?.items && selectedRequest.items.length > 0">
+              <strong>Productos:</strong>
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th x-show="isEditing && role === 'coordinador'">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(item, index) in editForm.items" :key="item.id || index">
+                    <tr>
+                      <td x-text="item.product_name || item.name"></td>
+                      <td>
+                        <input type="number" class="form-control form-control-sm" x-model="item.quantity" min="1" :disabled="!isEditing || role !== 'coordinador'" style="width: 80px;">
+                      </td>
+                      <td x-show="isEditing && role === 'coordinador'">
+                        <button class="btn btn-sm btn-danger" @click="removeItem(index)">Eliminar</button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              
+              <!-- Agregar producto -->
+              <div class="mt-3" x-show="isEditing && role === 'coordinador'">
+                <strong>Agregar Producto:</strong>
+                <div class="row g-2 mt-1">
+                  <div class="col-md-6">
+                    <select class="form-select form-select-sm" x-model="selectedProductId">
+                      <option value="">Seleccione un producto...</option>
+                      <template x-for="prod in allProducts" :key="prod.id">
+                        <option :value="prod.id" x-text="prod.name + ' (Stock: ' + prod.quantity + ')'"></option>
+                      </template>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <input type="number" class="form-control form-control-sm" x-model="selectedProductQty" min="1" placeholder="Cantidad">
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-sm btn-success" @click="addProduct()">Agregar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="closeModal()">Cerrar</button>
+            <template x-if="role === 'coordinador'">
+              <button type="button" class="btn btn-primary" x-show="!isEditing" @click="startEdit()">Editar</button>
+            </template>
+            <template x-if="role === 'coordinador' && isEditing">
+              <button type="button" class="btn btn-success" @click="saveEdit()">Guardar Cambios</button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/app.js"></script>
+  <script>
+  function reportsPage(){
+    return {
+      role: (localStorage.getItem('role') || 'encargado'),
+      userName: (localStorage.getItem('userName') || ''),
+      tab:'movements', page:1, movements:[], reqs:[], 
+      requestsPage: 1,
+      showRequestModal: false, selectedRequest: null,
+      isEditing: false,
+      editForm: { solicitante: '', return_date: '', items: [], status: 'pendiente' },
+      allProducts: [],
+      selectedProductId: '',
+      selectedProductQty: 1,
+      filterUser: '',
+      filterSolicitante: '',
+      filterDate: '',
+      
+      translateAction(action) {
+        const translations = {
+          'create_request': 'Realizó solicitud',
+          'edit_request': 'Editó solicitud',
+          'return_request': 'Recibió devolución',
+          'delete_request': 'Eliminó',
+          'create_product': 'Agregó producto',
+          'edit_product': 'Actualizó producto',
+          'update_product': 'Actualizó producto',
+          'delete_product': 'Eliminó producto',
+          'create_user': 'Registró usuario',
+          'edit_user': 'Modificó usuario',
+          'activate_user': 'Activó usuario',
+          'deactivate_user': 'Desactivó usuario',
+          'login': 'Inició sesión',
+          'logout': 'Cerró sesión'
+        };
+        return translations[action] || action;
+      },
+      
+      get filteredRequests() {
+        let filtered = this.reqs;
+        
+        if (this.filterUser) {
+          filtered = filtered.filter(r => 
+            (r.user || '').toLowerCase().includes(this.filterUser.toLowerCase())
+          );
+        }
+        
+        if (this.filterSolicitante) {
+          filtered = filtered.filter(r => 
+            (r.solicitante || '').toLowerCase().includes(this.filterSolicitante.toLowerCase())
+          );
+        }
+        
+        if (this.filterDate) {
+          filtered = filtered.filter(r => 
+            (r.created_at || '').startsWith(this.filterDate)
+          );
+        }
+        
+        return filtered;
+      },
+      
+      get paginatedRequests() {
+        const start = (this.requestsPage - 1) * 30;
+        const end = start + 30;
+        return this.filteredRequests.slice(start, end);
+      },
+      
+      async load(){
+        const r = await apiFetch('/movements?page='+this.page,'GET'); if(r.ok) this.movements = r.data.data || [];
+        const s = await apiFetch('/requests/history','GET'); if(s.ok) this.reqs = s.data || [];
+        const p = await apiFetch('/products','GET'); if(p.ok) this.allProducts = p.data || [];
+        try{ const d = await apiFetch('/dashboard/summary','GET'); if(d.ok){ this.role = d.data.role || this.role; this.userName = d.data.user?.name || this.userName; if(this.userName) localStorage.setItem('userName', this.userName); if(this.role) localStorage.setItem('role', this.role); } }catch(e){}
+      },
+      logout(){ localStorage.removeItem('token'); localStorage.removeItem('userName'); localStorage.removeItem('role'); window.location='index.html'; },
+      prev(){ if(this.page>1){ this.page--; this.load(); } },
+      next(){ this.page++; this.load(); },
+      prevRequests(){ if(this.requestsPage>1){ this.requestsPage--; } },
+      nextRequests(){ if(this.requestsPage * 30 < this.filteredRequests.length){ this.requestsPage++; } },
+      async viewRequest(req) {
+        // Cargar los detalles completos de la solicitud incluyendo items
+        const res = await apiFetch('/requests/' + req.id, 'GET');
+        if (res.ok) {
+          this.selectedRequest = res.data;
+          this.editForm = {
+            solicitante: res.data.solicitante,
+            return_date: res.data.return_date,
+            status: res.data.status || 'pendiente',
+            items: JSON.parse(JSON.stringify(res.data.items || []))
+          };
+          this.showRequestModal = true;
+        } else {
+          // Si no hay endpoint específico, usar los datos que ya tenemos
+          this.selectedRequest = req;
+          this.editForm = {
+            solicitante: req.solicitante,
+            return_date: req.return_date,
+            status: req.status || 'pendiente',
+            items: []
+          };
+          this.showRequestModal = true;
+        }
+      },
+      closeModal() {
+        this.showRequestModal = false;
+        this.isEditing = false;
+        this.editForm = { solicitante: '', return_date: '', items: [], status: 'pendiente' };
+        this.selectedProductId = '';
+        this.selectedProductQty = 1;
+      },
+      startEdit() {
+        this.isEditing = true;
+      },
+      removeItem(index) {
+        this.editForm.items.splice(index, 1);
+      },
+      addProduct() {
+        if (!this.selectedProductId) {
+          alert('Seleccione un producto');
+          return;
+        }
+        const product = this.allProducts.find(p => p.id == this.selectedProductId);
+        if (!product) return;
+        
+        // Verificar si el producto ya está en la lista
+        const existing = this.editForm.items.find(i => i.product_id == this.selectedProductId);
+        if (existing) {
+          alert('Este producto ya está en la lista');
+          return;
+        }
+        
+        this.editForm.items.push({
+          product_id: product.id,
+          product_name: product.name,
+          quantity: parseInt(this.selectedProductQty) || 1
+        });
+        
+        this.selectedProductId = '';
+        this.selectedProductQty = 1;
+      },
+      async saveEdit() {
+        if (!this.selectedRequest?.id) return;
+        
+        const payload = {
+          solicitante: this.editForm.solicitante,
+          return_date: this.editForm.return_date,
+          status: this.editForm.status,
+          items: this.editForm.items.map(item => ({
+            product_id: item.product_id || item.id,
+            quantity: parseInt(item.quantity)
+          }))
+        };
+        
+        const res = await apiFetch('/requests/' + this.selectedRequest.id, 'PUT', payload);
+        if (res.ok) {
+          alert('Solicitud actualizada exitosamente');
+          this.closeModal();
+          this.load(); // Recargar la lista
+        } else {
+          alert('Error al actualizar la solicitud: ' + (res.message || 'Error desconocido'));
+        }
+      },
+      exportMovements() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        let currentPage = 1;
+        
+        const addHeader = () => {
+          // Logos
+          try {
+            doc.addImage('assets/logo1.png', 'PNG', 15, 10, 30, 15);
+            doc.addImage('assets/logo2.png', 'PNG', 165, 10, 30, 15);
+          } catch(e) {
+            console.log('No se pudieron cargar los logos');
+          }
+          
+          // Encabezado
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.text('UNIVERSIDAD AUT\u00d3NOMA DE CAMPECHE', 105, 15, { align: 'center' });
+          doc.text('FACULTAD DE INGENIER\u00cdA', 105, 22, { align: 'center' });
+          
+          doc.setFontSize(14);
+          doc.text('REPORTE DE MOVIMIENTOS', 105, 32, { align: 'center' });
+          
+          // Información
+          doc.setFontSize(9);
+          doc.setFont(undefined, 'normal');
+          doc.text('Fecha: ' + new Date().toLocaleDateString('es-MX'), 15, 42);
+          doc.text('P\u00e1gina de datos: ' + this.page, 165, 42);
+        };
+        
+        addHeader();
+        
+        // Tabla
+        let y = 50;
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.text('#', 15, y);
+        doc.text('Usuario', 25, y);
+        doc.text('Acci\u00f3n', 70, y);
+        doc.text('Detalles', 110, y);
+        doc.text('Fecha', 170, y);
+        doc.line(15, y + 2, 195, y + 2);
+        
+        y += 7;
+        doc.setFont(undefined, 'normal');
+        
+        this.movements.forEach((m, index) => {
+          if (y > 270) {
+            // Agregar número de página antes de cambiar
+            doc.setFontSize(8);
+            doc.text('P\u00e1gina ' + currentPage, 105, 287, { align: 'center' });
+            
+            doc.addPage();
+            currentPage++;
+            addHeader();
+            y = 50;
+            
+            // Repetir encabezados de tabla
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'bold');
+            doc.text('#', 15, y);
+            doc.text('Usuario', 25, y);
+            doc.text('Acci\u00f3n', 70, y);
+            doc.text('Detalles', 110, y);
+            doc.text('Fecha', 170, y);
+            doc.line(15, y + 2, 195, y + 2);
+            y += 7;
+            doc.setFont(undefined, 'normal');
+          }
+          doc.text((index + 1).toString(), 15, y);
+          doc.text((m.user || '').substring(0, 20), 25, y);
+          doc.text(this.translateAction(m.action).substring(0, 20), 70, y);
+          doc.text((m.details || '').substring(0, 30), 110, y);
+          doc.text((m.created_at || '').substring(0, 16), 170, y);
+          y += 6;
+        });
+        
+        // Agregar número de página en la última página
+        doc.setFontSize(8);
+        doc.text('P\u00e1gina ' + currentPage, 105, 287, { align: 'center' });
+        
+        doc.save('Movimientos_pagina_' + this.page + '.pdf');
+      },
+      exportRequests() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        let currentPage = 1;
+        
+        const addHeader = () => {
+          // Logos
+          try {
+            doc.addImage('assets/logo1.png', 'PNG', 15, 10, 30, 15);
+            doc.addImage('assets/logo2.png', 'PNG', 165, 10, 30, 15);
+          } catch(e) {
+            console.log('No se pudieron cargar los logos');
+          }
+          
+          // Encabezado
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.text('UNIVERSIDAD AUT\u00d3NOMA DE CAMPECHE', 105, 15, { align: 'center' });
+          doc.text('FACULTAD DE INGENIER\u00cdA', 105, 22, { align: 'center' });
+          
+          doc.setFontSize(14);
+          doc.text('REPORTE DE SOLICITUDES', 105, 32, { align: 'center' });
+          
+          // Información
+          doc.setFontSize(9);
+          doc.setFont(undefined, 'normal');
+          doc.text('Fecha: ' + new Date().toLocaleDateString('es-MX'), 15, 42);
+        };
+        
+        addHeader();
+        
+        // Tabla
+        let y = 50;
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.text('#', 15, y);
+        doc.text('Usuario', 25, y);
+        doc.text('Folio', 70, y);
+        doc.text('Tipo', 100, y);
+        doc.text('Solicitante', 130, y);
+        doc.text('Fecha', 170, y);
+        doc.line(15, y + 2, 195, y + 2);
+        
+        y += 7;
+        doc.setFont(undefined, 'normal');
+        
+        this.filteredRequests.forEach((r, index) => {
+          if (y > 270) {
+            // Agregar número de página antes de cambiar
+            doc.setFontSize(8);
+            doc.text('P\u00e1gina ' + currentPage, 105, 287, { align: 'center' });
+            
+            doc.addPage();
+            currentPage++;
+            addHeader();
+            y = 50;
+            
+            // Repetir encabezados de tabla
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'bold');
+            doc.text('#', 15, y);
+            doc.text('Usuario', 25, y);
+            doc.text('Folio', 70, y);
+            doc.text('Tipo', 100, y);
+            doc.text('Solicitante', 130, y);
+            doc.text('Fecha', 170, y);
+            doc.line(15, y + 2, 195, y + 2);
+            y += 7;
+            doc.setFont(undefined, 'normal');
+          }
+          doc.text((index + 1).toString(), 15, y);
+          doc.text((r.user || '').substring(0, 20), 25, y);
+          doc.text((r.folio || '').substring(0, 15), 70, y);
+          doc.text((r.type || '').substring(0, 15), 100, y);
+          doc.text((r.solicitante || '').substring(0, 20), 130, y);
+          doc.text((r.created_at || '').substring(0, 16), 170, y);
+          y += 6;
+        });
+        
+        // Agregar número de página en la última página
+        doc.setFontSize(8);
+        doc.text('Página ' + currentPage, 105, 287, { align: 'center' });
+        
+        doc.save('solicitudes_pagina_' + this.requestsPage + '.pdf');
+      },
+      translateType(type){
+        const types = {
+          'prestamo': 'Préstamo',
+          'salida': 'Salida',
+          'devolucion': 'Devolución'
+        };
+        return types[type] || type;
+      },
+      translateStatus(status){
+        const statuses = {
+          'pendiente': 'Pendiente',
+          'activa': 'Aprobada',
+          'aprobada': 'Aprobada',
+          'devuelta': 'Devuelta',
+          'cancelada': 'Cancelada'
+        };
+        return statuses[status] || status;
+      }
+    };
+  }
+  </script>
+</body>
+</html>

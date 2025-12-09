@@ -15,9 +15,11 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/dashboard/summary',[DashboardController::class,'summary']);
     Route::apiResource('products', ProductController::class);
     Route::post('/requests',[RequestController::class,'store']);
+    Route::get('/requests/history',[RequestController::class,'history']);
+    Route::get('/requests/{id}',[RequestController::class,'show']);
+    Route::put('/requests/{id}',[RequestController::class,'update']);
     Route::post('/requests/{id}/return',[RequestController::class,'markReturn']);
     Route::delete('/requests/{id}',[RequestController::class,'destroy']);
-    Route::get('/requests/history',[RequestController::class,'history']);
     Route::get('/movements',[MovementController::class,'index']);
     Route::apiResource('users', UserController::class)->only(['index','store','update']);
     Route::post('/users/{id}/toggle',[UserController::class,'toggle']);

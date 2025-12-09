@@ -1,36 +1,161 @@
 /* exact-style.css - designed to match the provided captures */
+
+/* Variables globales (colores del tema) */
 :root{
-  --navy:#071635;
-  --accent:#f2d300;
-  --panel:#ffffff;
-  --muted:#6c757d;
-  --danger:#b00020;
+  --navy:#071635;      /* Azul marino oscuro para sidebar y textos */
+  --accent:#f2d300;    /* Amarillo acento usado en header y botones */
+  --panel:#ffffff;     /* Blanco para tarjetas/paneles */
+  --muted:#6c757d;     /* Gris suave para textos secundarios */
+  --danger:#b00020;    /* Rojo oscuro para estados de peligro */
 }
+
+/* Ajuste global del box model */
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:#f4f6f8;color:#222}
-.header{
-  background:var(--accent);display:flex;align-items:center;padding:12px 20px;gap:12px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.06);
+
+/* Estilos del body */
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Arial,sans-serif; /* Tipografía principal */
+  background:#f4f6f8;  /* Fondo gris muy claro */
+  color:#222;          /* Color general del texto */
 }
-.header img.logo{height:56px}
-.header .logout{margin-left:auto}
-.container-fluid{padding:18px}
-.row{display:flex;gap:18px}
-.col-3{flex:0 0 25%;max-width:25%}
-.col-9{flex:1}
-.sidebar{background:var(--navy);color:var(--accent);padding:20px;border-radius:10px;min-height:72vh}
-.sidebar a{display:block;color:var(--accent);text-decoration:none;padding:10px 8px;border-radius:6px}
-.sidebar a.active, .sidebar a:hover{background:rgba(242,211,0,0.12);color:#071635;font-weight:600}
-.card-panel{background:var(--panel);padding:18px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-.table-soft{width:100%;border-collapse:collapse}
-.table-soft th, .table-soft td{padding:10px;border-bottom:1px solid #eef2f5;text-align:left}
-.table-danger td{background:rgba(176,0,32,0.06)}
-.badge-low{background:#fff4cc;color:#805400;padding:6px 8px;border-radius:6px;font-weight:600}
-.btn-primary-yellow{background:var(--accent);border:none;color:#071635;padding:8px 12px;border-radius:8px}
-.small-muted{color:var(--muted);font-size:0.9rem}
-.modal-centered{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2000}
-.footer-note{font-size:0.8rem;color:#888;margin-top:12px}
+
+/* Barra superior (header) */
+.header{
+  background:var(--accent); /* Color amarillo */
+  display:flex;             /* Elementos alineados en fila */
+  align-items:center;       /* Centra verticalmente */
+  padding:12px 20px;
+  gap:12px;                 /* Espaciado entre elementos */
+  box-shadow:0 2px 6px rgba(0,0,0,0.06); /* Sombra ligera */
+}
+
+/* Logo dentro del header */
+.header img.logo{
+  height:56px;
+}
+
+/* El botón de logout se manda al extremo derecho */
+.header .logout{
+  margin-left:auto;
+}
+
+/* Contenedor general Bootstrap */
+.container-fluid{
+  padding:18px;
+}
+
+/* Filas como flexbox */
+.row{
+  display:flex;
+  gap:18px; /* Espacio entre las columnas */
+}
+
+/* Columna izquierda (sidebar) */
+.col-3{
+  flex:0 0 25%;   /* Ocupa el 25% */
+  max-width:25%;
+}
+
+/* Columna derecha (contenido) */
+.col-9{
+  flex:1;         /* Ocupa el espacio restante */
+}
+
+/* Estilos de la barra lateral */
+.sidebar{
+  background:var(--navy);  /* Azul marino */
+  color:var(--accent);     /* Texto amarillo */
+  padding:20px;
+  border-radius:10px;
+  min-height:72vh;         /* Altura mínima */
+}
+
+/* Links dentro de la barra lateral */
+.sidebar a{
+  display:block;
+  color:var(--accent);
+  text-decoration:none;
+  padding:10px 8px;
+  border-radius:6px;
+}
+
+/* Hover y link activo */
+.sidebar a.active, 
+.sidebar a:hover{
+  background:rgba(242,211,0,0.12); /* Amarillo traslúcido */
+  color:#ffffff;                   /* Texto azul */
+  font-weight:600;
+}
+
+/* Tarjetas/Panels de contenido */
+.card-panel{
+  background:var(--panel); /* Blanco */
+  padding:18px;
+  border-radius:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04); /* Sombra ligera */
+}
+
+/* Tablas estilizadas */
+.table-soft{
+  width:100%;
+  border-collapse:collapse;
+}
+
+/* Celdas de tabla */
+.table-soft th, .table-soft td{
+  padding:10px;
+  border-bottom:1px solid #eef2f5; /* Línea gris clara */
+  text-align:left;
+}
+
+/* Filas con estado de peligro */
+.table-danger td{
+  background:rgba(176,0,32,0.06); /* Fondo rojo suave */
+}
+
+/* Badge de prioridad baja */
+.badge-low{
+  background:#fff4cc; /* Amarillo muy claro */
+  color:#805400;      /* Café/amarillo oscuro */
+  padding:6px 8px;
+  border-radius:6px;
+  font-weight:600;
+}
+
+/* Botón amarillo estilo primario */
+.btn-primary-yellow{
+  background:var(--accent);
+  border:none;
+  color:#071635; /* Texto azul */
+  padding:8px 12px;
+  border-radius:8px;
+}
+
+/* Texto pequeño y en gris suave */
+.small-muted{
+  color:var(--muted);
+  font-size:0.9rem;
+}
+
+/* Clase para centrar modales en la pantalla */
+.modal-centered{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  z-index:2000;
+}
+
+/* Texto pequeño para notas o información secundaria */
+.footer-note{
+  font-size:0.8rem;
+  color:#888;
+  margin-top:12px;
+}
+
+/* Responsivo para pantallas pequeñas */
 @media(max-width:768px){
-  .col-3{display:none}
-  .col-9{flex:1}
+  .col-3{display:none;} /* Oculta la barra lateral */
+  .col-9{flex:1;}       /* Contenido ocupa todo el ancho */
 }

@@ -1,26 +1,241 @@
 <!doctype html>
 <html lang="es">
-    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Productos</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link href="css/exact-style.css" rel="stylesheet">
-        <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    </head>
-    <body x-data="productsPage()" x-init="load()">
-        <div class="header">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Productos</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/exact-style.css" rel="stylesheet">
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+
+<body x-data="productsPage()" x-init="load()">
+
+    <div class="header d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
             <img src="assets/logo1.png" class="logo">
             <img src="assets/logo2.png" class="logo">
-            <div style="margin-left:auto">
-                <button class="btn btn-outline-dark" @click="logout()">Salir</button>
-            </div></div><div class="container-fluid"><div class="row">
-                <div class="col-2"><div class="sidebar">
-                    <a href="dashboard.html">Inicio</a><a href="users.html">Usuarios</a>
-                    <a href="requests.html">Solicitudes</a>
-                    <a href="reports.html">Reportes</a></div></div>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="me-3">Hola <strong x-text="userName"></strong></div>
+            <div><button class="btn btn-outline-dark" @click="logout()">Salir</button></div>
+        </div>
+    </div>
 
-                    <div class="col-9"><div class="card-panel">
-                        <div class="d-flex justify-content-between">
-                            <h3>Productos</h3><button class="btn btn-primary" @click="openNew()">Agregar</button>
+    <div class="container-fluid">
+        <div class="row">
+
+            <div class="col-2">
+                <div class="sidebar">
+                    <a href="dashboard.html">Inicio</a>
+                    <a href="users.html" x-show="role==='coordinador'">Usuarios</a>
+                    <a href="products.html">Productos</a>
+                    <a href="requests.html">Solicitudes</a>
+                    <a href="reports.html">Reportes</a>
+                </div>
             </div>
-            <table class="table table-soft mt-3">
-                <thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Categoría</th><th>Stock</th><th>Acción</th></tr></thead>
-                <tbody><template x-for="p in products" :key="p.id"><tr :class="{'table-danger':p.quantity==0}"><td x-text="p.id"></td><td x-text="p.name"></td><td x-text="p.description"></td><td x-text="p.category_name"></td><td x-text="p.quantity"></td><td><button class="btn btn-sm btn-secondary" @click="edit(p)">Editar</button><button class="btn btn-sm btn-danger" @click="remove(p.id)">Eliminar</button></td></tr></template></tbody></table></div></div></div></div><script src="js/app.js"></script><script>function productsPage(){return {products:[],categories:[],modal:false,form:{},async load(){const r=await apiFetch('/products','GET');if(r.ok)this.products=r.data;const c=await apiFetch('/categories','GET');if(c.ok)this.categories=c.data;},logout(){localStorage.removeItem('token');window.location='index.html';},openNew(){this.form={};this.modal=true;},edit(p){this.form=Object.assign({},p);this.modal=true;},async save(){if(this.form.id)await apiFetch('/products/'+this.form.id,'PUT',this.form);else await apiFetch('/products','POST',this.form);this.modal=false;this.load();},async remove(id){if(!confirm('Eliminar producto?'))return;await apiFetch('/products/'+id,'DELETE');this.load();}}}</script></body></html>
+
+            <div class="col-9">
+                <div class="card-panel">
+                    <div class="d-flex justify-content-between">
+                        <h3>Productos</h3>
+                        <button class="btn btn-primary" @click="openNew()">Agregar producto</button>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div class="row mt-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar por nombre o codigo</label>
+                            <input type="text" class="form-control" x-model="searchText" placeholder="Ingrese nombre o codigo del producto">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Filtrar por categoría</label>
+                            <select class="form-select" x-model="filterCategory">
+                                <option value="">Todas las categorías</option>
+                                <template x-for="c in categories" :key="c.id">
+                                    <option :value="c.id" x-text="c.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+
+                    <table class="table table-soft mt-3">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Categoría</th>
+                                <th>Stock</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(p, index) in filteredProducts" :key="p.id">
+                                <tr :class="{'table-danger': p.quantity == 0}">
+                                    <td x-text="index + 1"></td>
+                                    <td x-text="p.codigo"></td>
+                                    <td x-text="p.name"></td>
+                                    <td x-text="p.description"></td>
+                                    <td x-text="p.category_name"></td>
+                                    <td x-text="p.quantity"></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-secondary" @click="edit(p)">Editar</button>
+                                        <button class="btn btn-sm btn-danger" @click="remove(p.id)">Eliminar</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal para agregar/editar producto -->
+    <div class="modal fade" :class="{'show d-block': modal}" tabindex="-1" style="background:rgba(0,0,0,0.5);" x-show="modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" x-text="form.id ? 'Editar producto' : 'Agregar producto'"></h5>
+                    <button type="button" class="btn-close" @click="modal=false"></button>
+                </div>
+                <form @submit.prevent="save()">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" x-model="form.name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" x-model="form.description" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Categoría</label>
+                            <select class="form-select" x-model="form.category_id" required>
+                                <option value="" disabled selected>Selecciona una categoría</option>
+                                <template x-for="c in categories" :key="c.id">
+                                    <option :value="c.id" x-text="c.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" class="form-control" x-model="form.quantity" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cantidad mínima</label>
+                            <input type="number" class="form-control" x-model="form.min_quantity" min="0" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="modal=false">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+
+    <script>
+        function productsPage() {
+            return {
+                role: (localStorage.getItem('role') || 'encargado'),
+                userName: (localStorage.getItem('userName') || ''),
+                products: [],
+                categories: [],
+                modal: false,
+                form: {},
+                searchText: '',
+                filterCategory: '',
+
+                get filteredProducts() {
+                    let filtered = this.products;
+
+                    // Filtrar por categoría
+                    if (this.filterCategory) {
+                        filtered = filtered.filter(p => p.category_id == this.filterCategory);
+                    }
+
+                    // Filtrar por texto de búsqueda (nombre o código)
+                    if (this.searchText.trim()) {
+                        const search = this.searchText.toLowerCase();
+                        filtered = filtered.filter(p => 
+                            p.name.toLowerCase().includes(search) || 
+                            (p.codigo && p.codigo.toString().includes(search))
+                        );
+                    }
+
+                    return filtered;
+                },
+
+                async load() {
+                    const r = await apiFetch('/products', 'GET');
+                    if (r.ok) this.products = r.data;
+
+                    const c = await apiFetch('/categories', 'GET');
+                    if (c.ok) this.categories = c.data;
+
+                    try {
+                        const s = await apiFetch('/dashboard/summary', 'GET');
+                        if (s.ok) {
+                            this.role = s.data.role || this.role;
+                            this.userName = s.data.user?.name || this.userName;
+                            if (this.userName) localStorage.setItem('userName', this.userName);
+                            if (this.role) localStorage.setItem('role', this.role);
+                        }
+                    } catch (e) {}
+                },
+
+                logout() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userName');
+                    localStorage.removeItem('role');
+                    window.location = 'index.html';
+                },
+
+                openNew() {
+                    this.form = { min_quantity: 5 };
+                    this.modal = true;
+                },
+
+                edit(p) {
+                    this.form = Object.assign({}, p);
+                    this.modal = true;
+                },
+
+                async save() {
+                    let r;
+                    if (this.form.id)
+                        r = await apiFetch('/products/' + this.form.id, 'PUT', this.form);
+                    else
+                        r = await apiFetch('/products', 'POST', this.form);
+
+                    if (!r.ok) {
+                        const msg = (r.data && (r.data.message || JSON.stringify(r.data.errors||r.data))) || 'Error al guardar';
+                        alert(msg);
+                        return;
+                    }
+
+                    this.modal = false;
+                    this.load();
+                },
+
+                async remove(id) {
+                    if (!confirm('Eliminar producto?')) return;
+                    await apiFetch('/products/' + id, 'DELETE');
+                    this.load();
+                }
+            }
+        }
+    </script>
+
+</body>
+</html>
+
